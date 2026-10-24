@@ -8,6 +8,58 @@ O histórico de desenvolvimento anterior a esta versão (v1.6.0–v1.8.3) foi
 consolidado na entrada v2.0.0; a partir daqui, toda mudança relevante é
 registrada aqui antes de cada release.
 
+## [2.1.6-beta]
+
+Pre-release com os ajustes pedidos na revisão do HACS.
+
+### Segurança — a senha deixou de vazar nos frames exibidos e registrados
+
+Todo frame ISECMobile carrega a senha em ASCII, e a integração a
+publicava em claro: no atributo `ultimo_comando_enviado` do sensor
+**"Último comando"** (que também vai para o histórico/banco do Home
+Assistant), no campo `frame_enviado` da resposta do `send_raw_command` e
+nos logs de nível DEBUG. Isso tornava inócuas as opções "exigir código
+para armar/desarmar".
+
+- Nova `protocol.mask_frame()`: troca os bytes da senha por `**`
+  (ex.: `09 E9 21 ** ** ** ** 41 42 21 18`). Cobre os três formatos que
+  carregam senha — ISECMobile, autenticação do protocolo legado E7
+  (senha de leitura) e autenticação da AMT 8000.
+- Usada no atributo do sensor, na resposta do `send_raw_command` e nos
+  logs DEBUG de envio dos dois clientes. O frame real, com a senha,
+  existe só em memória durante o envio.
+- Screenshot do README (`ultimo-comando-detalhe.png`) substituído por uma
+  versão com a senha mascarada.
+
+> Quem usou a versão anterior com o histórico habilitado pode ter a
+> senha gravada em estados antigos do sensor; recomenda-se trocar a senha
+> na central e limpar esse histórico.
+
+### Alterado — `send_raw_command` agora é serviço restrito a administradores
+
+Deixou de ser um serviço de entidade (qualquer usuário podia enviar
+frames arbitrários à central) e passou a ser registrado com
+`async_register_admin_service` — só administradores o chamam. Em vez de
+`target.entity_id`, recebe o campo opcional `config_entry_id` (pode ser
+omitido quando há uma única central). **Quebra de compatibilidade**:
+automações/scripts que usavam `target: entity_id:` precisam remover o
+`target` (e informar `config_entry_id` se houver mais de uma central).
+Agora também documentado no `README.md`.
+
+### Corrigido
+
+- **AMT 8000 — leitura de eventos:** `RECEPTOR_IP_EVENT_TABLE` não estava
+  importada em `coordinator.py`, o que gerava `NameError` ao traduzir os
+  eventos da AMT 8000.
+- **Tela "Configurar" (opções) com a entrada não carregada:** o acesso a
+  `hass.data[DOMAIN][entry_id]` fora do `try` derrubava o fluxo com erro
+  500 quando a integração havia falhado ao iniciar (ex.: senha alterada
+  na central). Agora, sem conexão persistente para reaproveitar, a nova
+  senha é validada com uma conexão temporária.
+- **AMT 8000 — senha incorreta na configuração inicial:** o `NackError`
+  levantado na autenticação não era tratado em `async_step_user`, e o
+  usuário via "erro desconhecido". Agora mostra "senha inválida".
+
 ## [2.1.5]
 
 ### Corrigido — suporte ao modo Stay (armed_home) na AMT 4010 SMART, condicionado a firmware

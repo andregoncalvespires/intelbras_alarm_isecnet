@@ -58,6 +58,7 @@ from .const import (
     MODEL_UNKNOWN,
     OPT_POLLING_INTERVAL,
     PGM_ADDRESSES,
+    RECEPTOR_IP_EVENT_TABLE,
     USER_NAME_RECORD_LEN,
     USER_NAME_TABLE_CAPACITY,
     VOLTAGE_OFFSETS,
@@ -86,6 +87,7 @@ from .protocol import (
     decode_user_names,
     decode_zone_names,
     parse_event_record,
+    mask_frame,
     parse_hex_bytes,
     parse_status,
     parse_status_2018_esmart_extra,
@@ -205,7 +207,7 @@ class IntelbrasAlarmCoordinator(DataUpdateCoordinator[PanelStatus]):
         # usuário, para permitir inspecionar com calma qual foi o último
         # comando de verdade (não a consulta de status) e sua resposta.
         self.last_command_action: str | None = None  # finalidade/nome, ex. "Ativar Partição A"
-        self.last_command_frame_hex: str | None = None  # bytes do comando enviado
+        self.last_command_frame_hex: str | None = None  # frame enviado, JÁ com a senha mascarada (**)
         self.last_command_response_hex: str | None = None  # bytes da resposta a esse comando
 
         # Marca de tempo (monotônica, imune a ajuste de relógio do sistema)
@@ -777,16 +779,7 @@ class IntelbrasAlarmCoordinator(DataUpdateCoordinator[PanelStatus]):
             return
         frame = _build_status_frame(password, self.family, self.model_key)
         response = await self.client.send_command(frame, context="validar nova senha")
-        # Uma resposta de status completa (43 ou 54 bytes, conforme a
-        # família) já confirma que a senha foi aceita. Não usamos
-        # raise_for_ack() nesse caso: o primeiro byte de um status
-        # completo (zonas abertas 1-8) pode coincidentemente bater com um
-        # código de NACK sem ser erro nenhum. Só tratamos como ACK/NACK
-        # quando a resposta é curta (1-2 bytes), como a central realmente
-        # usa para confirmar/rejeitar comandos.
-        if len(response.content) in (43, 54):
-            return
-        raise_for_ack(response)
+        _check_password_status_response(response)
 
     async def _async_validate_password_amt8000(self, password: str) -> None:
         """Testa uma senha candidata para a AMT 8000.
@@ -1598,14 +1591,14 @@ class IntelbrasAlarmCoordinator(DataUpdateCoordinator[PanelStatus]):
                 raise HomeAssistantError(str(err)) from err
 
         label = "comando bruto (diagnóstico)"
-        _LOGGER.debug("send_raw_command: frame=%s", final_frame.hex(" ").upper())
+        _LOGGER.debug("send_raw_command: frame=%s", mask_frame(final_frame))
         try:
             response = await self.client.send_command(final_frame, context=label)
         except PanelConnectionError as err:
             raise HomeAssistantError(f"Falha de comunicação: {err}") from err
 
         result: dict = {
-            "frame_enviado": final_frame.hex(" ").upper(),
+            "frame_enviado": mask_frame(final_frame),
             "resposta_bruta": response.raw.hex(" ").upper(),
             "checksum_valido": response.valid_checksum,
             "conteudo": response.content.hex(" ").upper(),
@@ -1648,7 +1641,7 @@ class IntelbrasAlarmCoordinator(DataUpdateCoordinator[PanelStatus]):
         if action_label:
             self.last_command_result = f"{action_label}..."
             self.last_command_action = action_label
-            self.last_command_frame_hex = frame.hex(" ").upper()
+            self.last_command_frame_hex = mask_frame(frame)
             self.async_update_listeners()
         try:
             response = await self.client.send_command(frame, context=action_label)
@@ -1720,7 +1713,7 @@ class IntelbrasAlarmCoordinator(DataUpdateCoordinator[PanelStatus]):
         if action_label:
             self.last_command_result = f"{action_label}..."
             self.last_command_action = action_label
-            self.last_command_frame_hex = frame.hex(" ").upper()
+            self.last_command_frame_hex = mask_frame(frame)
             self.async_update_listeners()
         try:
             response = await self.client.send_command(frame, context=action_label)
@@ -2633,6 +2626,50 @@ async def async_detect_model(host: str, port: int, password: str) -> tuple[str, 
             if status3.model_key != MODEL_UNKNOWN:
                 return status3.model_key, status3.model_name, FAMILY_2018
         return status.model_key, status.model_name, FAMILY_2018
+    finally:
+        await client.disconnect()
+
+
+def _check_password_status_response(response: ParsedFrame) -> None:
+    """Interpreta a resposta de uma consulta de status usada para validar senha.
+
+    Uma resposta de status completa (43 ou 54 bytes, conforme a família) já
+    confirma que a senha foi aceita. Não usamos raise_for_ack() nesse caso:
+    o primeiro byte de um status completo (zonas abertas 1-8) pode
+    coincidentemente bater com um código de NACK sem ser erro nenhum. Só
+    tratamos como ACK/NACK quando a resposta é curta (1-2 bytes), como a
+    central realmente usa para confirmar/rejeitar comandos.
+    """
+    if len(response.content) in (43, 54):
+        return
+    raise_for_ack(response)
+
+
+async def async_validate_password_standalone(
+    host: str, port: int, password: str, family: str, model_key: str
+) -> None:
+    """Valida uma senha com uma conexão TEMPORÁRIA — para quando a entrada
+    não está carregada (não existe conexão persistente para reaproveitar),
+    por exemplo na tela de opções depois que a senha mudou na central e a
+    integração falhou ao iniciar.
+
+    Levanta ``NackError`` (senha recusada), ``UpdateFailed`` (sem conexão)
+    ou, na AMT 8000, o mesmo que ``async_detect_amt8000``.
+    """
+    if family == FAMILY_8000:
+        await async_detect_amt8000(host, port, password)
+        return
+    client = PanelClient(host, port, timeout=DEFAULT_REQUEST_TIMEOUT)
+    try:
+        try:
+            await client.connect()
+            response = await client.send_command(
+                _build_status_frame(password, family, model_key),
+                context="validar nova senha (conexão temporária)",
+            )
+        except PanelConnectionError as err:
+            raise UpdateFailed(str(err)) from err
+        _check_password_status_response(response)
     finally:
         await client.disconnect()
 

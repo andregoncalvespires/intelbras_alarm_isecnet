@@ -36,7 +36,11 @@ from .const import (
     OPT_POLLING_INTERVAL,
     parse_zone_spec,
 )
-from .coordinator import async_detect_amt8000, async_detect_model
+from .coordinator import (
+    async_detect_amt8000,
+    async_detect_model,
+    async_validate_password_standalone,
+)
 from .panel_client import PanelConnectionError
 from .panel_client_amt8000 import Amt8000AuthError, PanelConnectionErrorAmt8000
 from .protocol import NackError
@@ -139,6 +143,12 @@ class IntelbrasAlarmConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 detected = await _validate_and_detect(self.hass, user_input)
             except InvalidPassword:
+                errors["base"] = "invalid_password"
+            except NackError:
+                # AMT 8000: a senha recusada na autenticação chega aqui como
+                # NackError (ver coordinator.async_detect_amt8000).
+                errors["base"] = "invalid_password"
+            except Amt8000AuthError:
                 errors["base"] = "invalid_password"
             except InvalidLegacyEepromPassword:
                 errors[CONF_LEGACY_EEPROM_PASSWORD] = "invalid_legacy_eeprom_password"
@@ -270,9 +280,24 @@ class IntelbrasAlarmOptionsFlow(config_entries.OptionsFlow):
                 # motivo do problema com o app AMT Remoto), então uma
                 # segunda conexão simultânea para "só testar" falhava e
                 # rejeitava até senhas corretas.
-                coordinator = self.hass.data[DOMAIN][self.config_entry.entry_id].coordinator
+                #
+                # Se a entrada NÃO está carregada (ex.: falhou ao iniciar
+                # porque a senha foi trocada na central), não existe
+                # conexão persistente para reaproveitar — e como também
+                # não há cliente conectado disputando a central, é seguro
+                # validar com uma conexão temporária, como no passo "user".
+                runtime = self.hass.data.get(DOMAIN, {}).get(self.config_entry.entry_id)
                 try:
-                    await coordinator.async_validate_password(password)
+                    if runtime is not None:
+                        await runtime.coordinator.async_validate_password(password)
+                    else:
+                        await async_validate_password_standalone(
+                            self.config_entry.data["host"],
+                            self.config_entry.data["port"],
+                            password,
+                            self.config_entry.data["family"],
+                            self.config_entry.data[CONF_MODEL],
+                        )
                 except NackError:
                     errors["base"] = "password_rejected"
                 except Amt8000AuthError:

@@ -471,6 +471,13 @@ conexão persistente já aberta (nunca abre uma segunda) e devolve a
 (`response_variable` numa automação/script, ou direto na aba Ferramentas
 de desenvolvedor → Ações).
 
+🔒 **Serviço restrito a administradores** (registrado com
+`async_register_admin_service`) — usuários comuns não conseguem chamá-lo.
+Em vez de escolher uma entidade, informe `config_entry_id` (ID da
+entrada/central; pode ser omitido quando só há uma). O `frame_enviado`
+devolvido na resposta e o log de depuração mostram a senha mascarada
+(`**`).
+
 ⚠️ **Contorna todas as validações normais da integração de propósito** —
 não injeta senha automaticamente (a menos que você peça), não monta
 checksum (a menos que você peça), não valida se o comando é conhecido.
@@ -485,9 +492,8 @@ tocar em nada (nem senha, nem checksum):
 
 ```yaml
 service: intelbras_alarm.send_raw_command
-target:
-  entity_id: alarm_control_panel.central
 data:
+  config_entry_id: 01ABC...  # opcional se houver só uma central
   frame: "08 E9 21 31 32 33 34 42 21 5B"
 ```
 
@@ -499,9 +505,8 @@ de preenchimento (ex.: `FF`) no lugar do checksum, e marque
 
 ```yaml
 service: intelbras_alarm.send_raw_command
-target:
-  entity_id: alarm_control_panel.central
 data:
+  config_entry_id: 01ABC...  # opcional se houver só uma central
   frame: "08 E9 21 31 32 33 34 42 21 FF"
   calculate_checksum: true
 ```
@@ -513,9 +518,8 @@ do mesmo jeito que qualquer outro comando já implementado:
 
 ```yaml
 service: intelbras_alarm.send_raw_command
-target:
-  entity_id: alarm_control_panel.central
 data:
+  config_entry_id: 01ABC...  # opcional se houver só uma central
   command: "0x42"
   content: "01 02 03"
 ```
@@ -527,7 +531,7 @@ todos equivalentes).
 Resposta devolvida (exemplo):
 
 ```yaml
-frame_enviado: "08 E9 21 31 32 33 34 42 21 5B"
+frame_enviado: "08 E9 21 ** ** ** ** 42 21 5B"
 resposta_bruta: "0A FE 21 00"
 checksum_valido: true
 conteudo: "FE"
@@ -1773,7 +1777,8 @@ das próprias entidades — não exigem nada configurado, aparecem sempre:
   - `ultimo_comando_finalidade`, `ultimo_comando_enviado`,
     `ultimo_comando_resposta`: nome da ação, frame enviado e resposta
     específica do **último comando real** (armar, desarmar, PGM, sirene,
-    pânico, bypass) — deliberadamente **não** atualizados pela consulta
+    pânico, bypass); a senha embutida no frame aparece **mascarada**
+    (`**`) — deliberadamente **não** atualizados pela consulta
     de status, para não sobrescrever rápido demais e dar tempo de
     analisar uma ação específica com calma.
 
@@ -1838,6 +1843,8 @@ E, a cada comando enviado (armar, desarmar, PGM, sirene, pânico, bypass):
 enviando comando: ação=Ativar Partição A frame=<bytes em hex>
 resposta recebida: ação=Ativar Partição A resultado=OK resposta_bruta=<bytes em hex>
 ```
+
+A senha embutida no frame é sempre mascarada (`**`) nesses logs.
 
 Isso permite comparar, byte a byte, o que a central realmente envia contra
 a lógica documentada na seção "Leitura do Status22/23" — essencial para

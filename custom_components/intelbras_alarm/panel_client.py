@@ -12,7 +12,7 @@ import logging
 from collections.abc import Callable
 
 from .const import DEFAULT_REQUEST_TIMEOUT
-from .protocol import ParsedFrame, ProtocolError, parse_frame
+from .protocol import ParsedFrame, ProtocolError, mask_frame, parse_frame
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -366,7 +366,7 @@ class PanelClient:
             # andamento) apareceria no log como enviada muito antes do
             # que aconteceu de verdade — gerando sequências
             # aparentemente fora de ordem (relatado pelo usuário).
-            _LOGGER.debug("enviando comando%s: frame=%s", label, frame.hex(" ").upper())
+            _LOGGER.debug("enviando comando%s: frame=%s", label, mask_frame(frame))
             if on_sent is not None:
                 on_sent()
             self._writer.write(frame)

@@ -311,6 +311,25 @@ real de cada evento (a ordem de endereço na memória **não** corresponde
 sempre consistente, não importa quantas vezes ou com que frequência você
 chamar.
 
+## Serviço `intelbras_alarm.send_raw_command` — diagnóstico avançado
+
+Ferramenta para **testar comandos ISECNet ainda não implementados**:
+envia um frame "cru" pela conexão já aberta e devolve a resposta bruta
+da central. Como a central executa o que for enviado, o serviço é
+**restrito a administradores** do Home Assistant. A senha aparece
+sempre mascarada (`**`) no frame devolvido e nos logs.
+
+```yaml
+service: intelbras_alarm.send_raw_command
+data:
+  config_entry_id: 01ABC...   # opcional se houver só uma central
+  command: "0x42"
+  content: "01 02 03"
+```
+
+Os modos de uso (frame completo, com checksum calculado, ou comando +
+conteúdo) estão no [README_DETALHADO.md](README_DETALHADO.md).
+
 ## Receptor IP — eventos em tempo real (opcional)
 
 Além da leitura sob demanda acima, a central pode ser configurada para
@@ -376,7 +395,7 @@ o recurso estiver desligado na configuração):
 - Quer confirmar o que a integração está fazendo? O sensor **"Último
   comando"** mostra a ação enviada e a resposta da central em atributos
   separados da consulta de status normal (que atualiza rápido demais para
-  acompanhar):
+  acompanhar). A senha é sempre mascarada (`**`) no comando exibido:
 
   ![Atributos da entidade "Último comando", mostrando o comando enviado e a resposta da central](docs/images/ultimo-comando-detalhe.png)
 

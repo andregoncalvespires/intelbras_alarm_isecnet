@@ -8,8 +8,13 @@ from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+import voluptuous as vol
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.service import async_register_admin_service
+from homeassistant.helpers.typing import ConfigType
 
 from .connection_state import async_load_connection_enabled
 from .const import (
@@ -31,6 +36,27 @@ from .panel_client_amt8000 import PanelClientAmt8000
 from .receptor_ip import ReceptorIPServer
 
 _LOGGER = logging.getLogger(__name__)
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+SERVICE_SEND_RAW_COMMAND = "send_raw_command"
+ATTR_CONFIG_ENTRY_ID = "config_entry_id"
+ATTR_FRAME = "frame"
+ATTR_COMMAND = "command"
+ATTR_CONTENT = "content"
+ATTR_PASSWORD = "password"
+ATTR_CALCULATE_CHECKSUM = "calculate_checksum"
+
+SEND_RAW_COMMAND_SCHEMA = vol.Schema(
+    {
+        vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
+        vol.Optional(ATTR_FRAME): cv.string,
+        vol.Optional(ATTR_COMMAND): cv.string,
+        vol.Optional(ATTR_CONTENT): cv.string,
+        vol.Optional(ATTR_PASSWORD): cv.string,
+        vol.Optional(ATTR_CALCULATE_CHECKSUM, default=False): cv.boolean,
+    }
+)
 
 PLATFORMS: list[Platform] = [
     Platform.ALARM_CONTROL_PANEL,
@@ -89,6 +115,57 @@ async def _async_retry(
             )
             await asyncio.sleep(espera_segundos)
     return False
+
+
+async def _async_handle_send_raw_command(call: ServiceCall) -> dict:
+    """Serviço ``intelbras_alarm.send_raw_command`` (somente administradores).
+
+    Ferramenta de diagnóstico avançado: envia um frame "cru" pela conexão
+    já aberta com a central e devolve a resposta bruta. Registrado como
+    serviço administrativo porque a central executa o que for enviado —
+    usuários sem privilégio de administrador não podem chamá-lo. O frame
+    devolvido na resposta tem a senha mascarada (``**``).
+    """
+    hass = call.hass
+    loaded = {
+        entry_id: data
+        for entry_id, data in hass.data.get(DOMAIN, {}).items()
+        if isinstance(data, IntelbrasAlarmData)
+    }
+    entry_id = call.data.get(ATTR_CONFIG_ENTRY_ID)
+    if entry_id is None:
+        if len(loaded) != 1:
+            raise HomeAssistantError(
+                "Informe 'config_entry_id': há "
+                f"{len(loaded)} centrais carregadas (é necessário exatamente uma "
+                "para omitir o campo)"
+            )
+        entry_id = next(iter(loaded))
+    data = loaded.get(entry_id)
+    if data is None:
+        raise HomeAssistantError(
+            f"Central '{entry_id}' não encontrada ou não carregada"
+        )
+    return await data.coordinator.async_send_raw_command(
+        frame=call.data.get(ATTR_FRAME),
+        command=call.data.get(ATTR_COMMAND),
+        content=call.data.get(ATTR_CONTENT),
+        password=call.data.get(ATTR_PASSWORD),
+        calculate_checksum=call.data[ATTR_CALCULATE_CHECKSUM],
+    )
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Registra os serviços de domínio (uma única vez, independente de entradas)."""
+    async_register_admin_service(
+        hass,
+        DOMAIN,
+        SERVICE_SEND_RAW_COMMAND,
+        _async_handle_send_raw_command,
+        schema=SEND_RAW_COMMAND_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

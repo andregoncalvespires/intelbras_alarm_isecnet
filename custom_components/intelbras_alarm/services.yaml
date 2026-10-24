@@ -38,12 +38,18 @@ send_raw_command:
     implementados/documentados pela integração. Contorna as validações
     normais de propósito: a central executa o que for enviado, então use
     com cuidado. Não gera erro em caso de NACK — o objetivo é justamente
-    ver a resposta, incluindo um NACK, não interromper a chamada.
-  target:
-    entity:
-      integration: intelbras_alarm
-      domain: alarm_control_panel
+    ver a resposta, incluindo um NACK, não interromper a chamada. Serviço
+    restrito a administradores; a senha é mascarada (**) no frame devolvido.
   fields:
+    config_entry_id:
+      name: Central
+      description: >-
+        A central que receberá o comando. Pode ser omitido quando há
+        apenas uma central configurada.
+      required: false
+      selector:
+        config_entry:
+          integration: intelbras_alarm
     frame:
       name: Frame completo
       description: >-

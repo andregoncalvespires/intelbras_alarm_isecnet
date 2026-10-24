@@ -52,6 +52,44 @@ def checksum(data: bytes) -> int:
     return (~x) & 0xFF
 
 
+def _password_byte_positions(frame: bytes) -> range | list[int]:
+    """Posições dos bytes que carregam senha em um frame, conforme o formato.
+
+    Três formatos carregam senha:
+
+    * ISECMobile (``build_command``): ``[len][0xE9][0x21][senha ASCII 4-6
+      dígitos][comando]...`` — os dígitos ASCII logo após o delimitador.
+    * Autenticação do E7 legado: ``[len][0xE7][5][17][3 bytes de senha]...``.
+    * Autenticação da AMT 8000: opcode ``0xF0F0`` no offset 6, conteúdo
+      ``[0x03][6 dígitos]...``.
+    """
+    if len(frame) >= 4 and frame[1] == ISEC_COMMAND and frame[2] == FRAME_DELIMITER:
+        end = 3
+        while end < len(frame) and end < 3 + 6 and 0x30 <= frame[end] <= 0x39:
+            end += 1
+        return range(3, end)
+    if len(frame) >= 7 and frame[1] == 0xE7 and frame[2] == 5 and frame[3] == 17:
+        return range(4, 7)
+    if len(frame) >= 15 and frame[6] == 0xF0 and frame[7] == 0xF0 and frame[8] == 0x03:
+        return range(9, 15)
+    return []
+
+
+def mask_frame(frame: bytes) -> str:
+    """Devolve o frame em hex (``"08 E9 21 ** ** ** ** ..."``) com os bytes
+    da senha trocados por ``**``.
+
+    Use SEMPRE esta função para qualquer frame que seja exibido, logado ou
+    guardado em atributo de entidade (que vai para o histórico do Home
+    Assistant). O frame real, com a senha, existe apenas em memória durante
+    o envio.
+    """
+    positions = set(_password_byte_positions(frame))
+    return " ".join(
+        "**" if i in positions else f"{b:02X}" for i, b in enumerate(frame)
+    )
+
+
 def parse_hex_bytes(text: str) -> bytes:
     """Converte uma string de bytes em hex livre em ``bytes``.
 

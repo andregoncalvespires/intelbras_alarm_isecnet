@@ -22,6 +22,7 @@ import logging
 from collections.abc import Callable
 
 from .const import DEFAULT_REQUEST_TIMEOUT
+from .protocol import mask_frame
 from .protocol_amt8000 import (
     Amt8000AuthError,
     ParsedFrameAmt8000,
@@ -208,7 +209,7 @@ class PanelClientAmt8000:
         exchange_started = loop.time()
         deadline = exchange_started + self._timeout
         try:
-            _LOGGER.debug("AMT 8000: enviando%s: frame=%s", label, frame.hex(" ").upper())
+            _LOGGER.debug("AMT 8000: enviando%s: frame=%s", label, mask_frame(frame))
             if on_sent is not None:
                 on_sent()
             self._writer.write(frame)
