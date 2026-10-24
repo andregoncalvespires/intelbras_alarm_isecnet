@@ -8,9 +8,9 @@ O histórico de desenvolvimento anterior a esta versão (v1.6.0–v1.8.3) foi
 consolidado na entrada v2.0.0; a partir daqui, toda mudança relevante é
 registrada aqui antes de cada release.
 
-## [2.1.6-beta]
+## [2.1.6]
 
-Pre-release com os ajustes pedidos na revisão do HACS.
+Ajustes pedidos na revisão do HACS (validados na pré-versão 2.1.6-beta).
 
 ### Segurança — a senha deixou de vazar nos frames exibidos e registrados
 
