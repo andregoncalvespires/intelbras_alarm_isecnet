@@ -5,10 +5,10 @@
     "@andregoncalvespires"
   ],
   "config_flow": true,
-  "documentation": "https://github.com/andregoncalvespires/intelbras_alarm",
+  "documentation": "https://github.com/andregoncalvespires/intelbras_alarm_isecnet",
   "integration_type": "hub",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/andregoncalvespires/intelbras_alarm/issues",
+  "issue_tracker": "https://github.com/andregoncalvespires/intelbras_alarm_isecnet/issues",
   "requirements": [],
   "version": "2.1.6"
 }
