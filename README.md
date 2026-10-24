@@ -436,6 +436,23 @@ o recurso estiver desligado na configuração):
 </tr>
 </table>
 
+## Versões
+
+As tags e releases do GitHub são criadas automaticamente pelo workflow
+[`.github/workflows/release.yml`](.github/workflows/release.yml):
+
+1. Para publicar uma nova versão, suba o campo `version` de
+   `custom_components/intelbras_alarm/manifest.json` e faça push na `main`.
+2. O workflow lê a versão, cria a tag `v<versão>` e a release com notas
+   geradas a partir dos commits. Se a release já existir, não faz nada.
+3. Versões com sufixo (ex.: `2.1.6-beta`) são publicadas como
+   **pre-release**.
+4. Também pode ser executado manualmente em **Actions → Release → Run
+   workflow**.
+
+> Pré-requisito no GitHub: **Settings → Actions → General → Workflow
+> permissions → Read and write permissions**.
+
 ## Créditos
 
 Esta integração foi construída a partir de trabalhos de engenharia
