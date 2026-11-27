@@ -35,8 +35,10 @@ não migra isso entre domínios. Para quem atualiza da 2.1.x:
      `intelbras_isecnet.*`;
    - as entidades são recriadas; confira os `entity_id` (o histórico das
      antigas não é transferido).
-6. A pasta antiga `custom_components/intelbras_alarm` é removida pelo HACS
-   na atualização. Se a instalação foi manual, apague-a.
+6. Depois de concluir a migração, **confira se a pasta antiga**
+   `custom_components/intelbras_alarm` ainda existe e, se existir, apague-a
+   e reinicie. Ela não é mais usada e, se ficar no lugar, pode manter a
+   configuração antiga carregada ao lado da nova.
 
 Também: logs em nível debug agora usam `custom_components.intelbras_isecnet`,
 e o estado salvo do switch de conexão passa a usar
