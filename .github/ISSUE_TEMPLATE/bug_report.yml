@@ -102,7 +102,7 @@ body:
     attributes:
       label: Log relevante
       description: >-
-        Ative o log em nível debug para `custom_components.intelbras_alarm`
+        Ative o log em nível debug para `custom_components.intelbras_isecnet`
         (Configurações → Sistema → Logs → ⋮ ao lado da integração → Ativar
         log de depuração), reproduza o problema, e cole aqui só o trecho
         relevante — não precisa o log inteiro.

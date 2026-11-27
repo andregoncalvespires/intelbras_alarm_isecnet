@@ -7,7 +7,7 @@ bypass_zone:
     que só se aplicam a comandos de ativação/desativação).
   target:
     entity:
-      integration: intelbras_alarm
+      integration: intelbras_isecnet
       domain: alarm_control_panel
   fields:
     zones:
@@ -49,7 +49,7 @@ send_raw_command:
       required: false
       selector:
         config_entry:
-          integration: intelbras_alarm
+          integration: intelbras_isecnet
     frame:
       name: Frame completo
       description: >-
@@ -118,5 +118,5 @@ read_events:
     tentar nada na central.
   target:
     entity:
-      integration: intelbras_alarm
+      integration: intelbras_isecnet
       domain: alarm_control_panel

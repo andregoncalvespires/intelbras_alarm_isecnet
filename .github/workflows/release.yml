@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - custom_components/intelbras_alarm/manifest.json
+      - custom_components/intelbras_isecnet/manifest.json
   workflow_dispatch:
 
 permissions:
@@ -19,7 +19,7 @@ jobs:
       - name: Ler a versão
         id: version
         run: |
-          version=$(python3 -c "import json; print(json.load(open('custom_components/intelbras_alarm/manifest.json'))['version'])")
+          version=$(python3 -c "import json; print(json.load(open('custom_components/intelbras_isecnet/manifest.json'))['version'])")
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Criar a release se a tag ainda não existe

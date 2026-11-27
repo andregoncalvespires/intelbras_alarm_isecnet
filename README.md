@@ -20,7 +20,7 @@
 > - **Ao instalar e configurar esta integração, você está ciente e
 >   aceitando estes termos.**
 
-Integração HACS para centrais de alarme Intelbras **AMT 1016 NET, AMT 2018
+Integração para o Marketplace do Home Assistant (antigo HACS) para centrais de alarme Intelbras **AMT 1016 NET, AMT 2018
 E/EG, ANM 24 Net, AMT 4010 SMART** e outros modelos da mesma família (ver
 lista completa abaixo), via protocolo ISECNet/ISECMobile (o mesmo do app
 AMT Mobile) — conexão TCP direta e persistente com a central.
@@ -86,12 +86,43 @@ relatarem outros modelos/firmwares.
 
 ## Instalação
 
-**Via HACS**: HACS → Integrações → menu (⋮) → Repositórios customizados →
-adicione a URL deste repositório (categoria Integração) → instale
-"Intelbras Alarm (ISECNet)" → reinicie o Home Assistant.
+### Home Assistant 2026.11 ou mais novo — Marketplace
 
-**Manual**: copie `custom_components/intelbras_alarm` para
+Desde a versão 2026.11 o HACS vem embutido no Home Assistant com o nome
+**Marketplace** (não há nada para instalar; só administradores o usam).
+
+1. Abra **Configurações → Marketplace**. No primeiro acesso, leia o aviso e
+   selecione **Eu entendo os riscos e concordo** (integrações da comunidade
+   não são testadas nem suportadas pelo projeto Home Assistant).
+2. Selecione **Adicionar a partir de link** (*Add from link*) e informe a
+   URL deste repositório:
+   `https://github.com/andregoncalvespires/intelbras_alarm_isecnet`
+   (isso exige a conexão com o GitHub, feita por login de dispositivo, sem
+   digitar senha no Home Assistant; ela só lê informações públicas).
+3. Abra "Intelbras Alarm (ISECNet)" e selecione **Instalar**. Você vai
+   direto para a configuração; **não é preciso reiniciar** para instalar.
+   Em atualizações futuras, um aviso em **Configurações → Sistema →
+   Reparos** informa quando reiniciar.
+
+> Quem já usava o HACS não precisa fazer nada: o Home Assistant migra tudo
+> sozinho na primeira inicialização após atualizar para a 2026.11 — as
+> integrações instaladas e os repositórios personalizados continuam lá.
+> Depois que a integração for aceita no catálogo padrão, bastará procurá-la
+> na aba de navegação do Marketplace, sem adicionar o link.
+
+### Home Assistant 2026.10 ou mais antigo — HACS
+
+HACS → Integrações → menu (⋮) → Repositórios customizados → adicione a URL
+acima (categoria Integração) → instale "Intelbras Alarm (ISECNet)" →
+reinicie o Home Assistant.
+
+**Manual**: copie `custom_components/intelbras_isecnet` para
 `<config>/custom_components/` → reinicie o Home Assistant.
+
+> ⚠️ **Atualizando da versão 2.1.x?** A partir da 2.2.0 o domínio mudou
+> para `intelbras_isecnet`; é preciso remover e adicionar a integração de
+> novo e trocar `intelbras_alarm.*` por `intelbras_isecnet.*` nos serviços
+> das automações. Passo a passo no [CHANGELOG](CHANGELOG.md).
 
 ## Configuração
 
@@ -272,13 +303,13 @@ consultas periódicas de tensão (a cada 5 minutos), desmarque a opção
 "Consultar tensão da fonte/bateria", logo abaixo do campo da senha,
 mantendo a senha preenchida normalmente.
 
-## Serviço `intelbras_alarm.bypass_zone`
+## Serviço `intelbras_isecnet.bypass_zone`
 
 Anula ou reativa uma ou mais zonas por número, direto de automações,
 scripts ou pela aba Ferramentas de desenvolvedor → Ações:
 
 ```yaml
-service: intelbras_alarm.bypass_zone
+service: intelbras_isecnet.bypass_zone
 target:
   entity_id: alarm_control_panel.central
 data:
@@ -289,7 +320,7 @@ data:
 Sempre usa a senha configurada da central (não depende das opções de
 "pedir senha" da UI). Preserva anulações já existentes em outras zonas.
 
-## Serviço `intelbras_alarm.read_events`
+## Serviço `intelbras_isecnet.read_events`
 
 Lê o log de eventos completo da central (até 256 eventos) e devolve todos
 já traduzidos (data/hora, zona ou usuário, partição, código e descrição)
@@ -298,7 +329,7 @@ eventos"** com os mais recentes, para consulta rápida sem precisar olhar
 a resposta do serviço toda vez.
 
 ```yaml
-service: intelbras_alarm.read_events
+service: intelbras_isecnet.read_events
 target:
   entity_id: alarm_control_panel.central
 ```
@@ -311,7 +342,7 @@ real de cada evento (a ordem de endereço na memória **não** corresponde
 sempre consistente, não importa quantas vezes ou com que frequência você
 chamar.
 
-## Serviço `intelbras_alarm.send_raw_command` — diagnóstico avançado
+## Serviço `intelbras_isecnet.send_raw_command` — diagnóstico avançado
 
 Ferramenta para **testar comandos ISECNet ainda não implementados**:
 envia um frame "cru" pela conexão já aberta e devolve a resposta bruta
@@ -320,7 +351,7 @@ da central. Como a central executa o que for enviado, o serviço é
 sempre mascarada (`**`) no frame devolvido e nos logs.
 
 ```yaml
-service: intelbras_alarm.send_raw_command
+service: intelbras_isecnet.send_raw_command
 data:
   config_entry_id: 01ABC...   # opcional se houver só uma central
   command: "0x42"
@@ -442,7 +473,7 @@ As tags e releases do GitHub são criadas automaticamente pelo workflow
 [`.github/workflows/release.yml`](.github/workflows/release.yml):
 
 1. Para publicar uma nova versão, suba o campo `version` de
-   `custom_components/intelbras_alarm/manifest.json` e faça push na `main`.
+   `custom_components/intelbras_isecnet/manifest.json` e faça push na `main`.
 2. O workflow lê a versão, cria a tag `v<versão>` e a release com notas
    geradas a partir dos commits. Se a release já existir, não faz nada.
 3. Versões com sufixo (ex.: `2.1.6-beta`) são publicadas como

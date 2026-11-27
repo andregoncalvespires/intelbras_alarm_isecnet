@@ -118,7 +118,7 @@ async def _async_retry(
 
 
 async def _async_handle_send_raw_command(call: ServiceCall) -> dict:
-    """Serviço ``intelbras_alarm.send_raw_command`` (somente administradores).
+    """Serviço ``intelbras_isecnet.send_raw_command`` (somente administradores).
 
     Ferramenta de diagnóstico avançado: envia um frame "cru" pela conexão
     já aberta com a central e devolve a resposta bruta. Registrado como

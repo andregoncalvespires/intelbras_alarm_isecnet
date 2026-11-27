@@ -513,7 +513,7 @@ class IntelbrasAlarmCoordinator(DataUpdateCoordinator[PanelStatus]):
             self._polling_task = self.entry.async_create_background_task(
                 self.hass,
                 self._polling_loop(),
-                name=f"intelbras_alarm_status_poll_{self.entry.entry_id}",
+                name=f"intelbras_isecnet_status_poll_{self.entry.entry_id}",
             )
         self._polling_wakeup.set()
 
@@ -1481,7 +1481,7 @@ class IntelbrasAlarmCoordinator(DataUpdateCoordinator[PanelStatus]):
         """Reativa uma ou mais zonas, preservando as demais anulações existentes.
 
         Contraparte de ``async_bypass_zones`` — usada pelo serviço
-        ``intelbras_alarm.bypass_zone`` com ``bypass: false``. Aceita
+        ``intelbras_isecnet.bypass_zone`` com ``bypass: false``. Aceita
         múltiplas zonas na mesma chamada pelo mesmo motivo que
         ``async_bypass_zones`` aceita um conjunto: o comando 0x42 é
         absoluto, então reativar zona a zona em chamadas separadas

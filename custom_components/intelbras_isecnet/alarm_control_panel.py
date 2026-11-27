@@ -94,7 +94,7 @@ async def async_setup_entry(
     _maybe_add_partitions()  # cobre o caso comum: dados já disponíveis agora
     entry.async_on_unload(coordinator.async_add_listener(_maybe_add_partitions))
 
-    # Serviço `intelbras_alarm.bypass_zone`, chamável de automações/scripts
+    # Serviço `intelbras_isecnet.bypass_zone`, chamável de automações/scripts
     # e disponível para qualquer entidade alarm_control_panel desta central
     # (central ou partições, tanto faz — todas compartilham o mesmo
     # coordinator). Usa sempre a senha memorizada da central, como os
@@ -110,7 +110,7 @@ async def async_setup_entry(
         "async_bypass_zone_service",
     )
 
-    # Serviço `intelbras_alarm.read_events` — lê o log de eventos completo
+    # Serviço `intelbras_isecnet.read_events` — lê o log de eventos completo
     # da central (EEPROM, comando 0x5C) e devolve todos já traduzidos na
     # resposta do serviço, além de atualizar a entidade "Últimos eventos"
     # com os mais recentes. Só disponível nos modelos/firmwares com acesso
@@ -258,7 +258,7 @@ class _BaseAlarmPanel(CoordinatorEntity[IntelbrasAlarmCoordinator], AlarmControl
         return AlarmControlPanelState.ARMED_AWAY
 
     async def async_bypass_zone_service(self, zones: str, bypass: bool = True) -> None:
-        """Implementa o serviço `intelbras_alarm.bypass_zone`.
+        """Implementa o serviço `intelbras_isecnet.bypass_zone`.
 
         Anula (``bypass=True``) ou reativa (``bypass=False``) uma ou mais
         zonas de uma vez, preservando as demais anulações já existentes.
@@ -269,7 +269,7 @@ class _BaseAlarmPanel(CoordinatorEntity[IntelbrasAlarmCoordinator], AlarmControl
         ativar/desativar" (só se aplicam a armar/desarmar).
 
         ```yaml
-        service: intelbras_alarm.bypass_zone
+        service: intelbras_isecnet.bypass_zone
         target:
           entity_id: alarm_control_panel.central
         data:
@@ -289,7 +289,7 @@ class _BaseAlarmPanel(CoordinatorEntity[IntelbrasAlarmCoordinator], AlarmControl
             await self.coordinator.async_unbypass_zones(zone_set)
 
     async def async_read_events_service(self) -> dict:
-        """Implementa o serviço `intelbras_alarm.read_events`.
+        """Implementa o serviço `intelbras_isecnet.read_events`.
 
         Lê o log de eventos completo da central e devolve todos já
         traduzidos na resposta do serviço — não só os mais recentes.

@@ -20,7 +20,7 @@
 > - **Ao instalar e configurar esta integração, você está ciente e
 >   aceitando estes termos.**
 
-Integração nativa (custom component / HACS) para centrais de alarme Intelbras
+Integração nativa (custom component / Marketplace do Home Assistant, antigo HACS) para centrais de alarme Intelbras
 **AMT 1016 NET, AMT 2018 E/EG, ANM 24 Net, AMT 4010 SMART** e outros
 modelos da mesma família (ver lista completa mais abaixo),
 via protocolo **ISECNet/ISECMobile** (o mesmo usado pelo app AMT Mobile) —
@@ -263,14 +263,30 @@ cosmético, não muda nenhum comportamento.
 
 ## Instalação
 
-### Via HACS (repositório customizado)
+### Via Marketplace (Home Assistant 2026.11 ou mais novo)
+Desde a 2026.11 o HACS é embutido no Home Assistant como **Marketplace**
+(sem instalação separada; uso restrito a administradores).
+1. **Configurações → Marketplace**; no primeiro acesso, selecione **Eu
+   entendo os riscos e concordo**.
+2. **Adicionar a partir de link** (*Add from link*) e informe
+   `https://github.com/andregoncalvespires/intelbras_alarm_isecnet` (a conexão com o GitHub usa login de dispositivo e só lê
+   informações públicas).
+3. Abra "Intelbras Alarm (ISECNet)" → **Instalar** → segue direto para a
+   configuração. Não é preciso reiniciar para instalar; em atualizações, um
+   reparo em **Configurações → Sistema → Reparos** avisa quando reiniciar.
+
+Quem já usava o HACS tem a instalação e os repositórios personalizados
+migrados automaticamente na primeira inicialização após a 2026.11. Quando a
+integração entrar no catálogo padrão, basta localizá-la no Marketplace.
+
+### Via HACS (Home Assistant 2026.10 ou mais antigo)
 1. HACS → Integrações → menu (⋮) → **Repositórios customizados**.
-2. Adicione a URL do seu repositório Git com esta pasta, categoria **Integração**.
+2. Adicione a URL acima, categoria **Integração**.
 3. Instale "Intelbras Alarm (ISECNet)" e reinicie o Home Assistant.
 
 ### Manual
-1. Copie a pasta `custom_components/intelbras_alarm` para
-   `<config>/custom_components/intelbras_alarm` na sua instalação.
+1. Copie a pasta `custom_components/intelbras_isecnet` para
+   `<config>/custom_components/intelbras_isecnet` na sua instalação.
 2. Reinicie o Home Assistant.
 
 ### Configuração
@@ -384,7 +400,7 @@ cosmético, não muda nenhum comportamento.
 | `sensor` | Bateria (%) | diagnóstico; zera automaticamente se a bateria estiver ausente/invertida OU em curto (ver seção específica abaixo) |
 | `sensor` | Zonas abertas / Zonas violadas / Zonas anuladas / Zonas com bateria baixa (contadores) | diagnóstico; atributo `zonas` com a lista dos números das zonas naquele estado (e `zonas_nomes` também, se a central informar nomes — família 4010), "Zonas com bateria baixa" soma o bitmap de sensores sem fio (Status39-43 na 2018/1016, Status47-52 na 4010 — só zonas 17-64 na 4010, que é a única faixa com sensor sem fio nesse modelo) |
 | `sensor` | Último comando | diagnóstico — grava a **ação enviada** assim que o comando sai (ex.: `"Ativar Partição A..."`) e depois **atualiza** com o resultado (ex.: `"Ativar Partição A: OK"` ou `"Ativar Partição A: Senha incorreta"`) |
-| `sensor` | Últimos eventos | diagnóstico — só nos modelos/firmwares com acesso ao comando `0x5C` para eventos (ver seção "Nomes de zona e log de eventos" abaixo); fica indisponível nos demais. Estado = evento mais recente; atributo `eventos` = lista dos `EVENT_ENTITY_RECENT_COUNT` (24) mais recentes. Atualizada pelo serviço `intelbras_alarm.read_events`, não pelo polling normal |
+| `sensor` | Últimos eventos | diagnóstico — só nos modelos/firmwares com acesso ao comando `0x5C` para eventos (ver seção "Nomes de zona e log de eventos" abaixo); fica indisponível nos demais. Estado = evento mais recente; atributo `eventos` = lista dos `EVENT_ENTITY_RECENT_COUNT` (24) mais recentes. Atualizada pelo serviço `intelbras_isecnet.read_events`, não pelo polling normal |
 | `sensor` | Rede (diagnóstico) / Módulo celular (diagnóstico) | **só na AMT 2018 E SMART** — diagnóstico; tipo de conexão/status dos links/IP/MAC no primeiro, tipo de módulo/sinal/operadora/Chip ID/IMEI no segundo (nos atributos). Ver seção "AMT 2018 E Smart — dados adicionais". Não testado contra hardware real |
 | `button` | Pânico silencioso / audível / emergência médica / incêndio | comando `0x45` |
 | `button` | Anular zonas abertas / Anular zonas violadas / Anular zonas abertas ou violadas | comando `0x42`; preserva anulações já existentes em outras zonas; o terceiro botão une os dois conjuntos numa única operação (evita que uma anulação desfaça a outra, já que o comando é absoluto) |
@@ -402,7 +418,7 @@ cosmético, não muda nenhum comportamento.
 > `changed_by` (o protocolo ISECNet não informa quem alterou o estado da
 > central, então não é preenchido).
 
-### Serviço `intelbras_alarm.bypass_zone` — anular/reativar uma ou mais zonas
+### Serviço `intelbras_isecnet.bypass_zone` — anular/reativar uma ou mais zonas
 
 Para anular ou reativar **zonas específicas por número** (algo que não
 cabe bem numa entidade fixa, já que são até 64 zonas possíveis), a
@@ -415,7 +431,7 @@ chamadas separadas faria a segunda desfazer a anulação da primeira; juntar
 as duas no mesmo `zones: "5;8"` evita esse problema.
 
 ```yaml
-service: intelbras_alarm.bypass_zone
+service: intelbras_isecnet.bypass_zone
 target:
   entity_id: alarm_control_panel.central   # ou qualquer alarm_control_panel desta central/partição
 data:
@@ -434,7 +450,7 @@ automation:
         entity_id: alarm_control_panel.central
         to: armed_home
     action:
-      - action: intelbras_alarm.bypass_zone
+      - action: intelbras_isecnet.bypass_zone
         target:
           entity_id: alarm_control_panel.central
         data:
@@ -462,7 +478,7 @@ modelo detectado.
 > zona" (que não depende de escolher uma zona) continua disponível e
 > funciona normalmente.
 
-### Serviço `intelbras_alarm.send_raw_command` — diagnóstico avançado
+### Serviço `intelbras_isecnet.send_raw_command` — diagnóstico avançado
 
 Ferramenta pensada para **testar comandos ISECNet ainda não
 implementados/documentados** pela integração — reaproveita a mesma
@@ -491,7 +507,7 @@ Três modos de uso, mutuamente exclusivos:
 tocar em nada (nem senha, nem checksum):
 
 ```yaml
-service: intelbras_alarm.send_raw_command
+service: intelbras_isecnet.send_raw_command
 data:
   config_entry_id: 01ABC...  # opcional se houver só uma central
   frame: "08 E9 21 31 32 33 34 42 21 5B"
@@ -504,7 +520,7 @@ de preenchimento (ex.: `FF`) no lugar do checksum, e marque
 último byte:
 
 ```yaml
-service: intelbras_alarm.send_raw_command
+service: intelbras_isecnet.send_raw_command
 data:
   config_entry_id: 01ABC...  # opcional se houver só uma central
   frame: "08 E9 21 31 32 33 34 42 21 FF"
@@ -517,7 +533,7 @@ que `password` seja informado) e checksum são montados automaticamente,
 do mesmo jeito que qualquer outro comando já implementado:
 
 ```yaml
-service: intelbras_alarm.send_raw_command
+service: intelbras_isecnet.send_raw_command
 data:
   config_entry_id: 01ABC...  # opcional se houver só uma central
   command: "0x42"
@@ -542,7 +558,7 @@ Diferente dos demais comandos da integração, um **NACK aqui não vira
 erro** — o objetivo é justamente ver a resposta (incluindo um NACK),
 não interromper a chamada.
 
-### Serviço `intelbras_alarm.read_events` — log de eventos
+### Serviço `intelbras_isecnet.read_events` — log de eventos
 
 Só disponível nos modelos/firmwares com acesso ao comando `0x5C` para
 isso — ver a tabela na seção "Nomes de zona e log de eventos" mais
@@ -551,7 +567,7 @@ chamada, sempre ordenado pela data/hora real decodificada de cada
 evento (nunca pela ordem de endereço — ver aviso na mesma seção):
 
 ```yaml
-service: intelbras_alarm.read_events
+service: intelbras_isecnet.read_events
 target:
   entity_id: alarm_control_panel.central
 ```
@@ -1202,7 +1218,7 @@ para o segundo caso, e `coordinator.supports_stay_command`/
 ## Arquitetura
 
 ```
-custom_components/intelbras_alarm/
+custom_components/intelbras_isecnet/
 ├── protocol.py         # frames ISECNet/ISECMobile: build_command, checksum,
 
 │                        # parse_status_2018/4010, decode_zone_names
@@ -1694,7 +1710,7 @@ palpite. Ver `protocol.EVENT_CODE_TABLE`.
 ## Comportamento em reinícios do Home Assistant
 
 O estado do switch **"Conexão com a central"** é persistido em um arquivo
-próprio (`.storage/intelbras_alarm_<entry_id>_connection_enabled`), lido
+próprio (`.storage/intelbras_isecnet_<entry_id>_connection_enabled`), lido
 **antes** de qualquer tentativa de comunicação com a central:
 
 - Se estava **ligado**, o comportamento é o de sempre: a integração conecta
@@ -1816,22 +1832,22 @@ integração:
 ```yaml
 logger:
   logs:
-    custom_components.intelbras_alarm: debug
+    custom_components.intelbras_isecnet: debug
 ```
 
 > O nível por componente fica **dentro** de `logs:`, não direto embaixo de
-> `logger:` — colocar `custom_components.intelbras_alarm: debug` direto
+> `logger:` — colocar `custom_components.intelbras_isecnet: debug` direto
 > sob `logger:` dá erro de validação de config. Para testar sem editar o
 > YAML (e sem persistir após um reinício), use o serviço
 > `logger.set_level` em Ferramentas de desenvolvedor → Ações:
 > ```yaml
 > service: logger.set_level
 > data:
->   custom_components.intelbras_alarm: debug
+>   custom_components.intelbras_isecnet: debug
 > ```
 
 Com o nível debug ativo, os logs (em **Configurações → Sistema → Logs**,
-filtrando por `intelbras_alarm`) mostram, a cada ciclo de polling:
+filtrando por `intelbras_isecnet`) mostram, a cada ciclo de polling:
 
 ```
 status recebido: conteúdo=<bytes em hex> | activated(central)=... partitions_armed={'A': ..., 'B': ...} zone_triggered=... siren_on=... problem=...

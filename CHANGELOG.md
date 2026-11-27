@@ -8,6 +8,46 @@ O histórico de desenvolvimento anterior a esta versão (v1.6.0–v1.8.3) foi
 consolidado na entrada v2.0.0; a partir daqui, toda mudança relevante é
 registrada aqui antes de cada release.
 
+## [2.2.0]
+
+### ⚠️ Quebra de compatibilidade — novo domínio `intelbras_isecnet`
+
+O domínio da integração mudou de `intelbras_alarm` para
+**`intelbras_isecnet`**, a pedido da revisão do HACS: `intelbras_alarm` já
+é usado por outra integração do catálogo (`tarikbc/ha-intelbras-alarm`), e
+as duas instalariam na mesma pasta `custom_components/intelbras_alarm`,
+sobrescrevendo uma à outra. A pasta agora é
+`custom_components/intelbras_isecnet`.
+
+O Home Assistant liga configuração, entidades e histórico ao domínio, e
+não migra isso entre domínios. Para quem atualiza da 2.1.x:
+
+1. **Anote** as opções da central (IP, porta, senha, opções) e, se usar
+   Receptor IP ou senha de leitura de EEPROM, essas também.
+2. **Remova** a integração antiga: Ajustes → Dispositivos e Serviços →
+   Intelbras Alarm → ⋮ → Excluir.
+3. **Atualize** pelo Marketplace (antigo HACS) e **reinicie** o Home Assistant.
+4. **Adicione** a integração de novo (Adicionar Integração → Intelbras
+   Alarm) com os mesmos dados.
+5. **Ajuste automações, scripts e dashboards**:
+   - serviços: `intelbras_alarm.bypass_zone`, `intelbras_alarm.read_events`
+     e `intelbras_alarm.send_raw_command` passam a ser
+     `intelbras_isecnet.*`;
+   - as entidades são recriadas; confira os `entity_id` (o histórico das
+     antigas não é transferido).
+6. A pasta antiga `custom_components/intelbras_alarm` é removida pelo HACS
+   na atualização. Se a instalação foi manual, apague-a.
+
+Também: logs em nível debug agora usam `custom_components.intelbras_isecnet`,
+e o estado salvo do switch de conexão passa a usar
+`.storage/intelbras_isecnet_<entry_id>_connection_enabled`.
+
+### Documentação
+
+- Instruções de instalação atualizadas para o **Marketplace** do Home
+  Assistant 2026.11 (HACS embutido), mantendo o passo a passo do HACS para
+  a 2026.10 e anteriores.
+
 ## [2.1.6]
 
 Ajustes pedidos na revisão do HACS (validados na pré-versão 2.1.6-beta).

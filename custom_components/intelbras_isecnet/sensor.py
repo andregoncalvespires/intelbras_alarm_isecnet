@@ -327,7 +327,7 @@ class IntelbrasRecentEventsSensor(CoordinatorEntity[IntelbrasAlarmCoordinator], 
     ``coordinator.supports_extended_eeprom``) **ou** ao protocolo legado
     opcional (ver ``coordinator.supports_legacy_eeprom``) — nos demais,
     fica sempre indisponível, já que a leitura nunca é tentada.
-    Atualizado pelo serviço ``intelbras_alarm.read_events`` (ver
+    Atualizado pelo serviço ``intelbras_isecnet.read_events`` (ver
     alarm_control_panel.py), não pelo polling normal — chamar esse
     serviço é o que dispara a leitura.
 

@@ -1,7 +1,7 @@
 """Constantes da integração Intelbras Alarm (protocolo ISECNet / ISECMobile)."""
 from __future__ import annotations
 
-DOMAIN = "intelbras_alarm"
+DOMAIN = "intelbras_isecnet"
 MANUFACTURER = "Intelbras"
 
 # ---------------------------------------------------------------------------
