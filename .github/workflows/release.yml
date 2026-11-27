@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - custom_components/intelbras_isecnet/manifest.json
+      - CHANGELOG.md
   workflow_dispatch:
 
 permissions:
@@ -22,19 +23,53 @@ jobs:
           version=$(python3 -c "import json; print(json.load(open('custom_components/intelbras_isecnet/manifest.json'))['version'])")
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - name: Criar a release se a tag ainda não existe
+      - name: Extrair as notas da versão do CHANGELOG
+        id: notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Pega a seção "## [<versão>]" até o próximo "## [" (ou o fim do arquivo).
+          python3 - <<'PY' > release_notes.md
+          import os, re
+          version = os.environ["VERSION"]
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(r"^## \[" + re.escape(version) + r"\][^\n]*\n(.*?)(?=^## \[|\Z)", text, re.S | re.M)
+          print(m.group(1).strip() if m else "")
+          PY
+          if [ -s release_notes.md ]; then
+            echo "has_notes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_notes=false" >> "$GITHUB_OUTPUT"
+            echo "Sem seção [$VERSION] no CHANGELOG; usando notas geradas pelo GitHub."
+          fi
+
+      - name: Criar ou atualizar a release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
+          HAS_NOTES: ${{ steps.notes.outputs.has_notes }}
         run: |
           tag="v${VERSION}"
+          if [ "$HAS_NOTES" = "true" ]; then
+            notes=(--notes-file release_notes.md)
+          else
+            notes=(--generate-notes)
+          fi
+
           if gh release view "$tag" >/dev/null 2>&1; then
-            echo "A release $tag já existe; nada a fazer."
+            # A release já existe: só atualiza o texto (idempotente), sem recriar a tag.
+            if [ "$HAS_NOTES" = "true" ]; then
+              gh release edit "$tag" --notes-file release_notes.md
+              echo "Notas da release $tag atualizadas a partir do CHANGELOG."
+            else
+              echo "A release $tag já existe; nada a fazer."
+            fi
             exit 0
           fi
+
           # Versões com sufixo (ex.: 2.1.6-beta) saem como pre-release.
-          flags=""
+          flags=()
           if [[ "$VERSION" == *-* ]]; then
-            flags="--prerelease"
+            flags+=(--prerelease)
           fi
-          gh release create "$tag" --target "$GITHUB_SHA" --title "$tag" --generate-notes $flags
+          gh release create "$tag" --target "$GITHUB_SHA" --title "$tag" "${notes[@]}" "${flags[@]}"
